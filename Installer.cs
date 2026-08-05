@@ -1,5 +1,4 @@
 ﻿using InstallApp.SteamServices;
-using Microsoft.Win32;
 using System.IO.Compression;
 using System.Runtime.Versioning;
 
@@ -8,22 +7,12 @@ namespace InstallApp;
 
 public sealed class Installer
 {
-    private const string SteamRootPath = @"HKEY_CURRENT_USER\Software\Valve\Steam";
-
     public async Task InstallForAppAsync(byte[] zipBytes, CancellationToken ct)
     {
-        var plugin = SteamPathsResolver.ResolveStPluginFolder();
-        if (plugin == null)
-        {
-            var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
-            SteamPathsResolver.DefaultStPlugin(stPath!);
-        }
-        var depot = SteamPathsResolver.ResolveDepotCacheFolder();
-        if (depot == null)
-        {
-            var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
-            SteamPathsResolver.DefaultStPlugin(stPath!);
-        }
+        var pathResolver = new SteamPathsResolver();
+
+        var plugin = pathResolver.ResolveStPluginFolder() ?? pathResolver.DefaultStPlugin();
+        var depot = pathResolver.ResolveDepotCacheFolder() ?? pathResolver.DefaultStPlugin();
 
         var workRoot = Path.Combine(Path.GetTempPath(), "CentrixG", Guid.NewGuid().ToString("N"));
         if (!Directory.Exists(workRoot))

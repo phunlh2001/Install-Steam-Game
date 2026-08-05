@@ -1,12 +1,16 @@
-﻿namespace InstallApp.SteamServices;
+﻿using Microsoft.Win32;
 
-public static class SteamPathsResolver
+namespace InstallApp.SteamServices;
+
+public class SteamPathsResolver
 {
-    public static string? ResolveSteamInstall()
+    private const string SteamRootPath = @"HKEY_CURRENT_USER\Software\Valve\Steam";
+
+    public string? ResolveSteamInstall()
     {
         foreach (var sub in new[] { @"SOFTWARE\WOW6432Node\Valve\Steam", @"SOFTWARE\Valve\Steam" })
         {
-            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(sub);
+            using var key = Registry.LocalMachine.OpenSubKey(sub);
             var path = key?.GetValue("InstallPath") as string;
             path = path?.Trim().TrimEnd('\\');
             if (!string.IsNullOrEmpty(path) && Directory.Exists(path) && File.Exists(Path.Combine(path, "steam.exe")))
@@ -16,7 +20,7 @@ public static class SteamPathsResolver
         return null;
     }
 
-    public static string? ResolveStPluginFolder()
+    public string? ResolveStPluginFolder()
     {
         var steam = ResolveSteamInstall();
         if (string.IsNullOrEmpty(steam))
@@ -25,7 +29,7 @@ public static class SteamPathsResolver
         return Path.Combine(steam, "config", "stplug-in");
     }
 
-    public static string? ResolveDepotCacheFolder()
+    public string? ResolveDepotCacheFolder()
     {
         var steam = ResolveSteamInstall();
         if (string.IsNullOrEmpty(steam))
@@ -34,9 +38,15 @@ public static class SteamPathsResolver
         return Path.Combine(steam, "config", "depotcache");
     }
 
-    public static string DefaultStPlugin(string steamRoot) =>
-        Path.Combine(steamRoot, "config", "stplug-in");
+    public string DefaultStPlugin()
+    {
+        var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
+        return Path.Combine(stPath!, "config", "stplug-in");
+    }
 
-    public static string DefaultDepotCache(string steamRoot) =>
-        Path.Combine(steamRoot, "config", "depotcache");
+    public string DefaultDepotCache()
+    {
+        var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
+        return Path.Combine(stPath!, "config", "depotcache");
+    }
 }

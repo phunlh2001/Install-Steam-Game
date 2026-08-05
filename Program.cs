@@ -34,7 +34,7 @@ try
         Console.WriteLine("Implemented manifest successfully!");
 
         // Restart steam.exe if it's running
-        var stPath = SteamPathsResolver.ResolveSteamInstall();
+        var stPath = new SteamPathsResolver().ResolveSteamInstall();
         if (stPath != null)
         {
             var result = await SteamClientRestart.TryRestartAsync(stPath, TimeSpan.FromSeconds(60));
