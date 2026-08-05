@@ -31,7 +31,7 @@ public sealed class Installer
 
         try
         {
-            await WriteAllBytesAtomicallyAsync(Path.Combine(workRoot, "manifest.zip"), zipBytes, ct)
+            await WriteAllBytesAutomicallyAsync(Path.Combine(workRoot, "manifest.zip"), zipBytes, ct)
                 .ConfigureAwait(false);
 
             var extractRoot = Path.Combine(workRoot, "extract");
@@ -61,7 +61,7 @@ public sealed class Installer
         finally { DeleteDirectoryQuietly(workRoot); }
     }
 
-    private async Task WriteAllBytesAtomicallyAsync(string path, byte[] data, CancellationToken ct)
+    private async Task WriteAllBytesAutomicallyAsync(string path, byte[] data, CancellationToken ct)
     {
         var folder = Path.GetDirectoryName(path) ?? "";
         Directory.CreateDirectory(folder);

@@ -1,4 +1,5 @@
 ﻿using InstallApp;
+using InstallApp.Models;
 using InstallApp.SteamServices;
 using System.Text.Json;
 
@@ -22,13 +23,12 @@ try
     }
 
     using var stream = await resp.Content.ReadAsStreamAsync();
-    using var doc = await JsonDocument.ParseAsync(stream);
+    var res = await JsonSerializer.DeserializeAsync<Response>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-    var root = doc.RootElement;
-    if (root.TryGetProperty("data", out var dataElement) && dataElement.TryGetProperty("manifestUrl", out var urlElement))
+    var manifestUrl = res?.Data.ManifestUrl;
+    if (!string.IsNullOrWhiteSpace(manifestUrl))
     {
-        var fileUrl = urlElement.GetString();
-        byte[] fileBytes = await httpClient.GetByteArrayAsync(fileUrl);
+        byte[] fileBytes = await httpClient.GetByteArrayAsync(manifestUrl);
         var installer = new Installer();
         await installer.InstallForAppAsync(fileBytes, CancellationToken.None);
         Console.WriteLine("Implemented manifest successfully!");
