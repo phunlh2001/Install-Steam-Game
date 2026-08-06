@@ -36,9 +36,9 @@ public sealed class Installer
                 string targetDir;
 
                 if (string.Equals(ext, ".lua", StringComparison.OrdinalIgnoreCase))
-                    targetDir = plugin!;
+                    targetDir = plugin;
                 else if (string.Equals(ext, ".manifest", StringComparison.OrdinalIgnoreCase))
-                    targetDir = depot!;
+                    targetDir = depot;
                 else
                     continue;
 
@@ -46,7 +46,7 @@ public sealed class Installer
                 File.Copy(filePath, dest, overwrite: true);
             }
         }
-        catch (Exception) { /* ignore cleanup failures */ }
+        catch { /* ignore cleanup failures */ }
         finally { DeleteDirectoryQuietly(workRoot); }
     }
 
