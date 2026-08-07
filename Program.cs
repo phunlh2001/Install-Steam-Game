@@ -1,5 +1,4 @@
 ﻿using InstallApp;
-using InstallApp.Models;
 using InstallApp.SteamServices;
 using System.Text.Json;
 
@@ -8,6 +7,7 @@ if (args.Length == 0)
     Console.WriteLine("Missing arguments");
     return;
 }
+
 
 var appId = args[0];
 var apiUrl = "https://centrixg.onrender.com/api/manifest";
@@ -23,11 +23,12 @@ try
     }
 
     using var stream = await resp.Content.ReadAsStreamAsync();
-    var res = await JsonSerializer.DeserializeAsync<Response>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    using var doc = await JsonDocument.ParseAsync(stream);
 
-    var manifestUrl = res?.Data.ManifestUrl;
-    if (!string.IsNullOrWhiteSpace(manifestUrl))
+    var root = doc.RootElement;
+    if (root.TryGetProperty("data", out var dataElement) && dataElement.TryGetProperty("manifestUrl", out var url))
     {
+        var manifestUrl = url.GetString();
         byte[] fileBytes = await httpClient.GetByteArrayAsync(manifestUrl);
         var installer = new Installer();
         await installer.InstallForAppAsync(fileBytes, CancellationToken.None);
