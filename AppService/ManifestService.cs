@@ -8,15 +8,10 @@ public interface IManifestService
     Task ProcessAsync(HttpClient httpClient, string appId, CancellationToken ct = default);
 }
 
-public sealed class ManifestService : IManifestService
+public sealed class ManifestService(Installer installer) : IManifestService
 {
-    private readonly Installer _installer;
+    private readonly Installer _installer = installer;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
-
-    public ManifestService(Installer installer)
-    {
-        _installer = installer;
-    }
 
     public async Task ProcessAsync(HttpClient httpClient, string appId, CancellationToken ct = default)
     {

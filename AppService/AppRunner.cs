@@ -3,16 +3,10 @@ using System.Net.Http.Headers;
 
 namespace InstallApp.AppService;
 
-public sealed class AppRunner
+public sealed class AppRunner(IThirdPartyService thirdPartyService, IManifestService manifestService)
 {
-    private readonly IThirdPartyService _thirdPartyService;
-    private readonly IManifestService _manifestService;
-
-    public AppRunner(IThirdPartyService thirdPartyService, IManifestService manifestService)
-    {
-        _thirdPartyService = thirdPartyService;
-        _manifestService = manifestService;
-    }
+    private readonly IThirdPartyService _thirdPartyService = thirdPartyService;
+    private readonly IManifestService _manifestService = manifestService;
 
     public async Task RunAsync(string token, string appId, string? gameType, CancellationToken ct = default)
     {

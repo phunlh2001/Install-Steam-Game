@@ -8,15 +8,10 @@ public interface IThirdPartyService
     Task ProcessAsync(HttpClient httpClient, string appId, string gameType, CancellationToken ct = default);
 }
 
-public sealed class ThirdPartyService : IThirdPartyService
+public sealed class ThirdPartyService(Installer installer) : IThirdPartyService
 {
-    private readonly Installer _installer;
+    private readonly Installer _installer = installer;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
-
-    public ThirdPartyService(Installer installer)
-    {
-        _installer = installer;
-    }
 
     public async Task ProcessAsync(HttpClient httpClient, string appId, string gameType, CancellationToken ct = default)
     {
@@ -69,41 +64,20 @@ public sealed class ThirdPartyService : IThirdPartyService
         }
 
         using var stream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        var res = await JsonSerializer.DeserializeAsync<BaseResponse<ThirdPartyResponse>>(stream, _jsonOptions, ct).ConfigureAwait(false);
+        var fileUrl = res?.Data?.FileUrl;
 
-        // Handle response which can be BaseResponse<List<ThirdPartyResponse>>
-        List<ThirdPartyResponse>? fileList = null;
-        try
+        if (!string.IsNullOrWhiteSpace(fileUrl))
         {
-            var res = await JsonSerializer.DeserializeAsync<BaseResponse<List<ThirdPartyResponse>>>(stream, _jsonOptions, ct).ConfigureAwait(false);
-            fileList = res?.Data;
-        }
-        catch
-        {
-            // Fallback for single object BaseResponse<ThirdPartyResponse> if needed
-            stream.Position = 0;
-            var singleRes = await JsonSerializer.DeserializeAsync<BaseResponse<ThirdPartyResponse>>(stream, _jsonOptions, ct).ConfigureAwait(false);
-            if (singleRes?.Data != null)
+            var zipBytes = await httpClient.GetByteArrayAsync(fileUrl, ct).ConfigureAwait(false);
+            if (await _installer.InstallRockstarZipAsync(appId, zipBytes, ct).ConfigureAwait(false))
             {
-                fileList = [singleRes.Data];
+                Console.WriteLine("Implemented rockstar third-party successfully!");
             }
         }
-
-        if (fileList == null || fileList.Count == 0)
+        else
         {
             Console.WriteLine("Not found fileUrl for rockstar!");
-            return;
-        }
-
-        foreach (var obj in fileList)
-        {
-            if (!string.IsNullOrWhiteSpace(obj.FileUrl))
-            {
-                var zipBytes = await httpClient.GetByteArrayAsync(obj.FileUrl, ct).ConfigureAwait(false);
-                if (await _installer.InstallRockstarZipAsync(appId, zipBytes, ct).ConfigureAwait(false))
-                {
-                    Console.WriteLine("Implemented rockstar third-party successfully!");
-                }
-            }
         }
     }
 }
