@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace InstallApp.SteamServices;
+namespace InstallApp.SteamService;
 
 public static class SteamClientRestart
 {

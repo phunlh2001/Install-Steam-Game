@@ -1,6 +1,6 @@
 ﻿using Microsoft.Win32;
 
-namespace InstallApp.SteamServices;
+namespace InstallApp.SteamService;
 
 public class SteamPathsResolver
 {

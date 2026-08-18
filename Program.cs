@@ -1,49 +1,19 @@
-﻿using InstallApp;
-using InstallApp.SteamServices;
-using System.Text.Json;
+using InstallApp;
+using InstallApp.AppService;
 
-if (args.Length == 0)
+if (args.Length < 2)
 {
     Console.WriteLine("Missing arguments");
     return;
 }
 
+var token = args[0];
+var appId = args[1];
+var type = args.Length > 2 ? args[2] : null;
 
-var appId = args[0];
-var apiUrl = "https://centrixg.onrender.com/api/manifest";
+var installer = new Installer();
+var thirdPartyService = new ThirdPartyService(installer);
+var manifestService = new ManifestService(installer);
+var appRunner = new AppRunner(thirdPartyService, manifestService);
 
-try
-{
-    using var httpClient = new HttpClient();
-    var resp = await httpClient.GetAsync($"{apiUrl}/{appId}");
-    if (!resp.IsSuccessStatusCode)
-    {
-        Console.WriteLine("Failed to fetch api");
-        return;
-    }
-
-    using var stream = await resp.Content.ReadAsStreamAsync();
-    using var doc = await JsonDocument.ParseAsync(stream);
-
-    var root = doc.RootElement;
-    if (root.TryGetProperty("data", out var dataElement) && dataElement.TryGetProperty("manifestUrl", out var url))
-    {
-        var manifestUrl = url.GetString();
-        byte[] fileBytes = await httpClient.GetByteArrayAsync(manifestUrl);
-        var installer = new Installer();
-        await installer.InstallForAppAsync(fileBytes, CancellationToken.None);
-        Console.WriteLine("Implemented manifest successfully!");
-
-        // Restart steam.exe if it's running
-        var stPath = new SteamPathsResolver().ResolveSteamInstall();
-        if (stPath != null)
-        {
-            var result = await SteamClientRestart.TryRestartAsync(stPath, TimeSpan.FromSeconds(60));
-            Console.WriteLine(result.Message);
-        }
-    }
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"Failed to get file: {ex.Message}");
-}
+await appRunner.RunAsync(token, appId, type);
