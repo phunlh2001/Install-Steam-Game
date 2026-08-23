@@ -10,13 +10,15 @@ public sealed class Installer
 {
     private readonly string _plugin;
     private readonly string _depot;
+    private readonly string _rootDepot;
     private readonly SteamLibrary _steamLibrary;
 
     public Installer()
     {
         var pathResolver = new SteamPathsResolver();
         _plugin = pathResolver.ResolveStPluginFolder() ?? pathResolver.DefaultStPlugin();
-        _depot = pathResolver.ResolveDepotCacheFolder() ?? pathResolver.DefaultStPlugin();
+        _depot = pathResolver.ResolveDepotCacheFolder() ?? pathResolver.DefaultDepotCache();
+        _rootDepot = pathResolver.ResolveRootDepotCacheFolder() ?? pathResolver.DefaultRootDepotCache();
         _steamLibrary = new SteamLibrary();
     }
 
@@ -105,17 +107,30 @@ public sealed class Installer
                 ct.ThrowIfCancellationRequested();
 
                 var ext = Path.GetExtension(filePath);
-                string targetDir;
+                var fileName = Path.GetFileName(filePath);
 
                 if (string.Equals(ext, ".lua", StringComparison.OrdinalIgnoreCase))
-                    targetDir = _plugin;
-                else if (string.Equals(ext, ".manifest", StringComparison.OrdinalIgnoreCase))
-                    targetDir = _depot;
-                else
-                    continue;
+                {
+                    if (!Directory.Exists(_plugin))
+                        Directory.CreateDirectory(_plugin);
 
-                var dest = Path.Combine(targetDir, Path.GetFileName(filePath));
-                File.Copy(filePath, dest, overwrite: true);
+                    var dest = Path.Combine(_plugin, fileName);
+                    File.Copy(filePath, dest, overwrite: true);
+                }
+                else if (string.Equals(ext, ".manifest", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!Directory.Exists(_depot))
+                        Directory.CreateDirectory(_depot);
+
+                    var dest1 = Path.Combine(_depot, fileName);
+                    File.Copy(filePath, dest1, overwrite: true);
+
+                    if (!Directory.Exists(_rootDepot))
+                        Directory.CreateDirectory(_rootDepot);
+
+                    var dest2 = Path.Combine(_rootDepot, fileName);
+                    File.Copy(filePath, dest2, overwrite: true);
+                }
             }
         }
         catch { /* ignore cleanup failures */ }

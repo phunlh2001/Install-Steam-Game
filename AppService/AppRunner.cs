@@ -24,16 +24,19 @@ public sealed class AppRunner(IThirdPartyService thirdPartyService, IManifestSer
         {
             await _thirdPartyService.ProcessAsync(httpClient, appId, gameType, ct).ConfigureAwait(false);
         }
-
-        // Process manifest files (always executed)
-        await _manifestService.ProcessAsync(httpClient, appId, ct).ConfigureAwait(false);
-
-        // Restart Steam if it is installed/running
-        var stPath = new SteamPathsResolver().ResolveSteamInstall();
-        if (stPath != null)
+        else
         {
-            var result = await SteamClientRestart.TryRestartAsync(stPath, TimeSpan.FromSeconds(60), ct).ConfigureAwait(false);
-            Console.WriteLine(result.Message);
+            // Process manifest files (always executed)
+            await _manifestService.ProcessAsync(httpClient, appId, ct).ConfigureAwait(false);
+
+            // Restart Steam if it is installed/running
+            var stPath = new SteamPathsResolver().ResolveSteamInstall();
+            if (stPath != null)
+            {
+                var result = await SteamClientRestart.TryRestartAsync(stPath, TimeSpan.FromSeconds(60), ct).ConfigureAwait(false);
+                Console.WriteLine(result.Message);
+            }
         }
+
     }
 }

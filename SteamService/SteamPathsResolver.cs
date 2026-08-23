@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 
 namespace InstallApp.SteamService;
 
@@ -38,6 +38,15 @@ public class SteamPathsResolver
         return Path.Combine(steam, "config", "depotcache");
     }
 
+    public string? ResolveRootDepotCacheFolder()
+    {
+        var steam = ResolveSteamInstall();
+        if (string.IsNullOrEmpty(steam))
+            return null;
+
+        return Path.Combine(steam, "depotcache");
+    }
+
     public string DefaultStPlugin()
     {
         var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
@@ -48,5 +57,11 @@ public class SteamPathsResolver
     {
         var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
         return Path.Combine(stPath!, "config", "depotcache");
+    }
+
+    public string DefaultRootDepotCache()
+    {
+        var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
+        return Path.Combine(stPath!, "depotcache");
     }
 }
