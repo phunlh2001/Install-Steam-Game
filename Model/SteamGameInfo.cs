@@ -1,6 +1,6 @@
 namespace InstallApp.Model;
 
-public class SteamGameInfo : IComparable<string>
+public class SteamGameInfo
 {
     public required uint AppId { get; init; }
 
@@ -11,10 +11,4 @@ public class SteamGameInfo : IComparable<string>
     public string? GameDirectory { get; init; }
 
     public ulong SizeOnDisk { get; init; }
-
-    public int CompareTo(string? displayName)
-    {
-        if (string.IsNullOrEmpty(displayName)) return 1;
-        return string.Compare(DisplayName, displayName, StringComparison.OrdinalIgnoreCase);
-    }
 }

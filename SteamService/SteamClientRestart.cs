@@ -79,24 +79,15 @@ public static class SteamClientRestart
             procs = Process.GetProcessesByName("steam");
             return procs.Length > 0;
         }
-        catch
-        {
-            return false;
-        }
+        catch { return false; }
         finally
         {
             if (procs is not null)
             {
                 foreach (var p in procs)
                 {
-                    try
-                    {
-                        p.Dispose();
-                    }
-                    catch
-                    {
-                        /* ignore */
-                    }
+                    try { p.Dispose(); }
+                    catch { /* ignore */ }
                 }
             }
         }

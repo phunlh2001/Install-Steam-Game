@@ -12,8 +12,6 @@ public sealed class Installer
     private readonly string _depot;
     private readonly string _rootDepot;
     private readonly SteamLibrary _steamLibrary;
-    private readonly ManifestGenerator _manifestGenerator;
-    private readonly LibraryFoldersSyncEngine _syncEngine;
 
     public Installer()
     {
@@ -22,8 +20,6 @@ public sealed class Installer
         _depot = pathResolver.ResolveDepotCacheFolder() ?? pathResolver.DefaultDepotCache();
         _rootDepot = pathResolver.ResolveRootDepotCacheFolder() ?? pathResolver.DefaultRootDepotCache();
         _steamLibrary = new SteamLibrary();
-        _manifestGenerator = new ManifestGenerator();
-        _syncEngine = new LibraryFoldersSyncEngine();
     }
 
     public bool OverrideUbisoftDll(string appId, byte[] dllBytes)
@@ -41,9 +37,7 @@ public sealed class Installer
         if (existingFiles.Count > 0)
         {
             foreach (var filePath in existingFiles)
-            {
                 File.WriteAllBytes(filePath, dllBytes);
-            }
         }
         else
         {
@@ -84,10 +78,7 @@ public sealed class Installer
             Console.WriteLine($"Error installing Rockstar files: {ex.Message}");
             return false;
         }
-        finally
-        {
-            DeleteDirectoryQuietly(workRoot);
-        }
+        finally { DeleteDirectoryQuietly(workRoot); }
     }
 
     public async Task InstallManifestForAppAsync(byte[] zipBytes, string? appId, CancellationToken ct)
@@ -95,8 +86,6 @@ public sealed class Installer
         var workRoot = Path.Combine(Path.GetTempPath(), "CentrixG", Guid.NewGuid().ToString("N"));
         if (!Directory.Exists(workRoot))
             Directory.CreateDirectory(workRoot);
-
-        var installedDepots = new Dictionary<string, string>();
 
         try
         {
@@ -137,43 +126,6 @@ public sealed class Installer
 
                     var dest2 = Path.Combine(_rootDepot, fileName);
                     File.Copy(filePath, dest2, overwrite: true);
-
-                    var parts = fileNameWithoutExt.Split('_', 2);
-                    if (parts.Length == 2)
-                    {
-                        installedDepots[parts[0]] = parts[1];
-                    }
-                    else if (parts.Length == 1 && !string.IsNullOrWhiteSpace(parts[0]))
-                    {
-                        installedDepots[parts[0]] = "";
-                    }
-                }
-            }
-
-            if (!string.IsNullOrEmpty(appId) && uint.TryParse(appId, out var uintAppId))
-            {
-                var gameInfo = _steamLibrary.ListGames().FirstOrDefault(g => g.AppId == uintAppId);
-                var displayName = gameInfo?.DisplayName ?? appId;
-                var installDir = gameInfo?.InstallDir ?? displayName;
-                var sizeOnDisk = gameInfo?.SizeOnDisk ?? 0;
-
-                var targetDrive = _steamLibrary.ResolveGameTargetDrive(uintAppId, installDir);
-                var targetSteamAppsDir = targetDrive?.SteamAppsPath ?? _rootDepot;
-
-                // 1. Synthesize appmanifest_<AppID>.acf (skips if file already exists)
-                _manifestGenerator.GenerateManifestIfMissing(
-                    targetSteamAppsDir,
-                    appId,
-                    displayName,
-                    installDir,
-                    sizeOnDisk,
-                    installedDepots
-                );
-
-                // 2. Synchronize libraryfolders.vdf
-                if (targetDrive != null)
-                {
-                    _syncEngine.RegisterAppInLibraryFolders(targetDrive.Path, appId, sizeOnDisk);
                 }
             }
         }

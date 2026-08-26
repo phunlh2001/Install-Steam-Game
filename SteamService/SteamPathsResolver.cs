@@ -26,7 +26,7 @@ public class SteamPathsResolver
         if (string.IsNullOrEmpty(steam))
             return null;
 
-        return Path.Combine(steam, "config", "stplug-in");
+        return Path.Combine(steam, "config", "lua");
     }
 
     public string? ResolveDepotCacheFolder()
@@ -50,7 +50,7 @@ public class SteamPathsResolver
     public string DefaultStPlugin()
     {
         var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
-        return Path.Combine(stPath!, "config", "stplug-in");
+        return Path.Combine(stPath!, "config", "lua");
     }
 
     public string DefaultDepotCache()

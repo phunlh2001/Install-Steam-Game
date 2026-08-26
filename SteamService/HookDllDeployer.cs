@@ -21,9 +21,7 @@ public sealed class HookDllDeployer
         {
             var targetPath = Path.Combine(steamRoot, dllName);
             if (!File.Exists(targetPath))
-            {
                 missing.Add(dllName);
-            }
         }
         return missing;
     }
@@ -94,14 +92,8 @@ public sealed class HookDllDeployer
             // 4. Deploy missing DLLs
             await DeployHookDllsAsync(steamRoot, missingDlls, extractedDlls, ct).ConfigureAwait(false);
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error deploying setup hook DLLs: {ex.Message}");
-        }
-        finally
-        {
-            DeleteDirectoryQuietly(workRoot);
-        }
+        catch (Exception ex) { Console.WriteLine($"Error deploying setup hook DLLs: {ex.Message}"); }
+        finally { DeleteDirectoryQuietly(workRoot); }
     }
 
     private static async Task DeployHookDllsAsync(string steamRoot, List<string> missingDlls, Dictionary<string, byte[]> dllSources, CancellationToken ct)
