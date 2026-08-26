@@ -36,6 +36,91 @@ public sealed class SteamLibrary
         return list;
     }
 
+    public IReadOnlyList<SteamLibraryFolder> GetLibraryFolders()
+    {
+        var steamRoot = new SteamPathsResolver().ResolveSteamInstall();
+        if (string.IsNullOrEmpty(steamRoot))
+            return [];
+
+        var vdfPath = Path.Combine(steamRoot, "steamapps", "libraryfolders.vdf");
+        if (!File.Exists(vdfPath))
+        {
+            var mainApps = Path.Combine(steamRoot, "steamapps");
+            if (Directory.Exists(mainApps))
+            {
+                return [new SteamLibraryFolder { Index = "0", Path = steamRoot }];
+            }
+            return [];
+        }
+
+        var result = new List<SteamLibraryFolder>();
+        try
+        {
+            using var fs = File.OpenRead(vdfPath);
+            var serializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
+            KVObject root = serializer.Deserialize(fs);
+
+            foreach (var kvp in root)
+            {
+                var folderIndex = kvp.Key;
+                var folderNode = kvp.Value;
+                if (folderNode.TryGetValue("path", out var pathVal) && pathVal.ValueType == KVValueType.String)
+                {
+                    var pathStr = ((string)pathVal).Replace(@"\\", @"\", StringComparison.Ordinal);
+                    var libFolder = new SteamLibraryFolder
+                    {
+                        Index = folderIndex,
+                        Path = pathStr
+                    };
+
+                    if (folderNode.TryGetValue("apps", out var appsNode))
+                    {
+                        foreach (var appKvp in appsNode)
+                        {
+                            var appId = appKvp.Key;
+                            var sizeVal = appKvp.Value != null ? Convert.ToString(appKvp.Value, CultureInfo.InvariantCulture) ?? "0" : "0";
+                            libFolder.Apps[appId] = sizeVal;
+                        }
+                    }
+
+                    result.Add(libFolder);
+                }
+            }
+        }
+        catch
+        {
+            result.Add(new SteamLibraryFolder { Index = "0", Path = steamRoot });
+        }
+
+        return result;
+    }
+
+    public SteamLibraryFolder? ResolveGameTargetDrive(uint appId, string? installDir = null)
+    {
+        var folders = GetLibraryFolders();
+        if (folders.Count == 0)
+            return null;
+
+        if (!string.IsNullOrWhiteSpace(installDir))
+        {
+            foreach (var folder in folders)
+            {
+                var testPath = Path.Combine(folder.SteamAppsPath, "common", installDir);
+                if (Directory.Exists(testPath))
+                    return folder;
+            }
+        }
+
+        var appIdStr = appId.ToString(CultureInfo.InvariantCulture);
+        foreach (var folder in folders)
+        {
+            if (folder.Apps.ContainsKey(appIdStr))
+                return folder;
+        }
+
+        return folders.FirstOrDefault(f => string.Equals(f.Index, "0", StringComparison.OrdinalIgnoreCase)) ?? folders[0];
+    }
+
     public string? GetGameDirectory(uint appId)
     {
         var steamRoot = new SteamPathsResolver().ResolveSteamInstall();
@@ -108,7 +193,7 @@ public sealed class SteamLibrary
     {
         using var fs = File.OpenRead(path);
         var serializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
-        var root = serializer.Deserialize(fs);
+        KVObject root = serializer.Deserialize(fs);
         var acc = new List<string>();
         CollectPathStrings(root, acc);
         foreach (var p in acc)
@@ -143,7 +228,7 @@ public sealed class SteamLibrary
         {
             using var fs = File.OpenRead(acfPath);
             var serializer = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
-            var root = serializer.Deserialize(fs);
+            KVObject root = serializer.Deserialize(fs);
             var app = FindAppState(root);
             if (app is null)
                 return false;
@@ -171,6 +256,15 @@ public sealed class SteamLibrary
                 installDir = ((string)installChild).Trim();
             }
 
+            ulong sizeOnDisk = 0;
+            if (app.TryGetValue("SizeOnDisk", out var sizeChild))
+            {
+                var sizeText = sizeChild.ValueType == KVValueType.String
+                    ? (string)sizeChild
+                    : Convert.ToString(sizeChild, CultureInfo.InvariantCulture) ?? "0";
+                _ = ulong.TryParse(sizeText.Trim(), out sizeOnDisk);
+            }
+
             var steamappsDir = Path.GetDirectoryName(acfPath);
             string? gameDir = null;
 
@@ -185,7 +279,8 @@ public sealed class SteamLibrary
                 AppId = appId,
                 DisplayName = name,
                 InstallDir = installDir,
-                GameDirectory = gameDir
+                GameDirectory = gameDir,
+                SizeOnDisk = sizeOnDisk
             };
             return true;
         }

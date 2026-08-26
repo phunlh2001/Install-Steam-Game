@@ -15,6 +15,7 @@ public static class Constants
     {
         public const string ThirdPartyUbisoft = "/third-party/ubisoft";
         public const string ThirdPartyRockstar = "/third-party/rockstar";
+        public const string ThirdPartySetup = "/third-party/setup";
         public const string Manifest = "/manifest/{0}";
     }
 

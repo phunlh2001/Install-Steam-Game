@@ -34,7 +34,7 @@ public sealed class ManifestService(Installer installer) : IManifestService
             if (!string.IsNullOrWhiteSpace(manifestUrl))
             {
                 byte[] fileBytes = await httpClient.GetByteArrayAsync(manifestUrl, ct).ConfigureAwait(false);
-                await _installer.InstallManifestForAppAsync(fileBytes, ct).ConfigureAwait(false);
+                await _installer.InstallManifestForAppAsync(fileBytes, appId, ct).ConfigureAwait(false);
                 Console.WriteLine("Implemented manifest successfully!");
             }
         }

@@ -10,6 +10,8 @@ public class SteamGameInfo : IComparable<string>
 
     public string? GameDirectory { get; init; }
 
+    public ulong SizeOnDisk { get; init; }
+
     public int CompareTo(string? displayName)
     {
         if (string.IsNullOrEmpty(displayName)) return 1;
