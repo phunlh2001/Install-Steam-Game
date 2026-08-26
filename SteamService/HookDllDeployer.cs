@@ -7,7 +7,7 @@ namespace InstallApp.SteamService;
 
 public sealed class HookDllDeployer
 {
-    private static readonly string[] HookDllNames = ["dwmapi.dll", "xinput4.dll", "opensteamtool.dll"];
+    private static readonly string[] HookDllNames = ["dwmapi.dll", "xinput1_4.dll", "OpenSteamTool.dll"];
     private readonly SteamPathsResolver _pathsResolver = new();
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
