@@ -26,6 +26,15 @@ public class SteamPathsResolver
         if (string.IsNullOrEmpty(steam))
             return null;
 
+        return Path.Combine(steam, "config", "stplug-in");
+    }
+
+    public string? ResolveLuaFolder()
+    {
+        var steam = ResolveSteamInstall();
+        if (string.IsNullOrEmpty(steam))
+            return null;
+
         return Path.Combine(steam, "config", "lua");
     }
 
@@ -48,6 +57,12 @@ public class SteamPathsResolver
     }
 
     public string DefaultStPlugin()
+    {
+        var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
+        return Path.Combine(stPath!, "config", "stplug-in");
+    }
+
+    public string DefaultLuaFolder()
     {
         var stPath = Registry.GetValue(SteamRootPath, "SteamPath", "") as string;
         return Path.Combine(stPath!, "config", "lua");

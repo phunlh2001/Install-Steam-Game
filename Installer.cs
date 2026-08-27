@@ -8,7 +8,8 @@ namespace InstallApp;
 
 public sealed class Installer
 {
-    private readonly string _plugin;
+    private readonly string _stPlugin;
+    private readonly string _luaPlugin;
     private readonly string _depot;
     private readonly string _rootDepot;
     private readonly SteamLibrary _steamLibrary;
@@ -16,7 +17,8 @@ public sealed class Installer
     public Installer()
     {
         var pathResolver = new SteamPathsResolver();
-        _plugin = pathResolver.ResolveStPluginFolder() ?? pathResolver.DefaultStPlugin();
+        _stPlugin = pathResolver.ResolveStPluginFolder() ?? pathResolver.DefaultStPlugin();
+        _luaPlugin = pathResolver.ResolveLuaFolder() ?? pathResolver.DefaultLuaFolder();
         _depot = pathResolver.ResolveDepotCacheFolder() ?? pathResolver.DefaultDepotCache();
         _rootDepot = pathResolver.ResolveRootDepotCacheFolder() ?? pathResolver.DefaultRootDepotCache();
         _steamLibrary = new SteamLibrary();
@@ -107,11 +109,17 @@ public sealed class Installer
 
                 if (string.Equals(ext, ".lua", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!Directory.Exists(_plugin))
-                        Directory.CreateDirectory(_plugin);
+                    if (!Directory.Exists(_stPlugin))
+                        Directory.CreateDirectory(_stPlugin);
 
-                    var dest = Path.Combine(_plugin, fileName);
-                    File.Copy(filePath, dest, overwrite: true);
+                    var dest1 = Path.Combine(_stPlugin, fileName);
+                    File.Copy(filePath, dest1, overwrite: true);
+
+                    if (!Directory.Exists(_luaPlugin))
+                        Directory.CreateDirectory(_luaPlugin);
+
+                    var dest2 = Path.Combine(_luaPlugin, fileName);
+                    File.Copy(filePath, dest2, overwrite: true);
                 }
                 else if (string.Equals(ext, ".manifest", StringComparison.OrdinalIgnoreCase))
                 {
