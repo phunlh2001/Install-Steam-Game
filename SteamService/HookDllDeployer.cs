@@ -17,11 +17,22 @@ public sealed class HookDllDeployer
         if (string.IsNullOrEmpty(steamRoot) || !Directory.Exists(steamRoot))
             return missing;
 
+        var monthAgo = DateTime.UtcNow.AddMonths(-1);
+
         foreach (var dllName in HookDllNames)
         {
             var targetPath = Path.Combine(steamRoot, dllName);
             if (!File.Exists(targetPath))
                 missing.Add(dllName);
+            else
+            {
+                var lastWriteUtc = File.GetLastWriteTimeUtc(targetPath);
+                if (lastWriteUtc <= monthAgo)
+                {
+                    Console.WriteLine($"Hook DLL '{dllName}' is outdated (modified: {lastWriteUtc:yyyy-MM-dd HH:mm:ss} UTC, older than 1 month). Marked for replacement.");
+                    missing.Add(dllName);
+                }
+            }
         }
         return missing;
     }
@@ -35,15 +46,15 @@ public sealed class HookDllDeployer
             return;
         }
 
-        // 1. Pre-check missing DLLs before making network request
+        // 1. Pre-check missing or outdated DLLs before making network request
         var missingDlls = GetMissingDlls(steamRoot);
         if (missingDlls.Count == 0)
         {
-            Console.WriteLine("All hook DLLs are already installed!.");
+            Console.WriteLine("All hook DLLs are already installed and up to date!.");
             return;
         }
 
-        Console.WriteLine($"Missing hook DLLs: {string.Join(", ", missingDlls)}. Requesting setup package...");
+        Console.WriteLine($"Hook DLLs needing deployment/update: {string.Join(", ", missingDlls)}. Requesting setup package...");
 
         // 2. Call /third-party/setup endpoint
         var url = $"{Constants.BaseApiUrl}{Constants.Endpoints.ThirdPartySetup}";
