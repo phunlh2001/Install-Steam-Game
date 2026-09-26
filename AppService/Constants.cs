@@ -8,7 +8,7 @@ public static class Constants
     {
         public const string UBISOFT = "Ubisoft";
         public const string ROCKSTAR = "Rockstar";
-        public const string EA = "EA";
+        //public const string EA = "EA";
     }
 
     public static class Endpoints
@@ -21,6 +21,6 @@ public static class Constants
 
     public static class ThirdPartyFiles
     {
-        public const string UbisoftTargetDll = "uplay_r1_loader68.dll";
+        public const string UbisoftTargetDll = "uplay_r1_loader64.dll";
     }
 }
