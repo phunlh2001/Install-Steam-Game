@@ -29,7 +29,16 @@ public sealed class HookDllDeployer
                 var lastWriteUtc = File.GetLastWriteTimeUtc(targetPath);
                 if (lastWriteUtc <= monthAgo)
                 {
-                    Console.WriteLine($"Hook DLL '{dllName}' is outdated (modified: {lastWriteUtc:yyyy-MM-dd HH:mm:ss} UTC, older than 1 month). Marked for replacement.");
+                    Console.WriteLine($"Hook DLL '{dllName}' is outdated (modified: {lastWriteUtc:yyyy-MM-dd HH:mm:ss} UTC, older than 1 month). Removing old file first...");
+                    try
+                    {
+                        File.Delete(targetPath);
+                        Console.WriteLine($"Removed old file '{dllName}' at {targetPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to remove old file '{dllName}': {ex.Message}");
+                    }
                     missing.Add(dllName);
                 }
             }
@@ -118,6 +127,12 @@ public sealed class HookDllDeployer
                 var targetPath = Path.Combine(steamRoot, dllName);
                 try
                 {
+                    if (File.Exists(targetPath))
+                    {
+                        File.Delete(targetPath);
+                        Console.WriteLine($"Removed old file {dllName} at {targetPath}");
+                    }
+
                     await WriteAllBytesAtomicallyAsync(targetPath, bytes, ct).ConfigureAwait(false);
                     Console.WriteLine($"Deployed {dllName} to {targetPath}");
                 }
