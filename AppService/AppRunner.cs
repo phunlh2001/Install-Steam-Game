@@ -7,7 +7,6 @@ public sealed class AppRunner(IThirdPartyService thirdPartyService, IManifestSer
 {
     private readonly IThirdPartyService _thirdPartyService = thirdPartyService;
     private readonly IManifestService _manifestService = manifestService;
-    private readonly HookDllDeployer _hookDllDeployer = new();
 
     public async Task RunAsync(string token, string appId, string? gameType, CancellationToken ct = default)
     {
@@ -16,6 +15,11 @@ public sealed class AppRunner(IThirdPartyService thirdPartyService, IManifestSer
             Console.WriteLine("Missing token or appId.");
             return;
         }
+
+        var hookDllDeployer = HookDllDeployer.Create();
+        var hookDllUpdater = HookDllUpdater.Create();
+        if (hookDllDeployer == null || hookDllUpdater == null)
+            return;
 
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -28,7 +32,15 @@ public sealed class AppRunner(IThirdPartyService thirdPartyService, IManifestSer
         else
         {
             // Execute Hook DLL deployment (pre-checking missing DLLs) BEFORE manifest installation
-            await _hookDllDeployer.EnsureHookDllsDeployedAsync(httpClient, ct).ConfigureAwait(false);
+            await hookDllDeployer.EnsureHookDllsDeployedAsync(httpClient, ct).ConfigureAwait(false);
+
+            // Check updater
+            var isApplyPatternToml = await hookDllUpdater.EnsurePatternTomlAsync(ct).ConfigureAwait(false);
+            if (isApplyPatternToml)
+            {
+                var resultUpdater = await hookDllUpdater.CheckAndApplyUpdateAsync(ct);
+                Console.WriteLine(resultUpdater.Message);
+            }
 
             // Process manifest files
             await _manifestService.ProcessAsync(httpClient, appId, ct).ConfigureAwait(false);

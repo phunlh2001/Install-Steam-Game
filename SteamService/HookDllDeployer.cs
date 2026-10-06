@@ -7,9 +7,26 @@ namespace InstallApp.SteamService;
 
 public sealed class HookDllDeployer
 {
-    private static readonly string[] HookDllNames = ["dwmapi.dll", "xinput1_4.dll", "OpenSteamTool.dll"];
-    private readonly SteamPathsResolver _pathsResolver = new();
+    private static readonly string[] HookDllNames = ["dwmapi.dll", "xinput1_4.dll", "opensteamtool.toml", "OpenSteamTool.dll"];
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private readonly string _steamRoot;
+    private HookDllDeployer(string steamDir)
+    {
+        _steamRoot = steamDir;
+    }
+
+    public static HookDllDeployer? Create()
+    {
+        var stPath = new SteamPathsResolver().ResolveSteamInstall();
+        if (string.IsNullOrWhiteSpace(stPath) || !Directory.Exists(stPath))
+        {
+            Console.WriteLine("Steam installation folder not found. Skipping setup hook DLL deployment.");
+            return null;
+        }
+
+        return new HookDllDeployer(stPath);
+    }
 
     public List<string> GetMissingDlls(string steamRoot)
     {
@@ -17,53 +34,26 @@ public sealed class HookDllDeployer
         if (string.IsNullOrEmpty(steamRoot) || !Directory.Exists(steamRoot))
             return missing;
 
-        var monthAgo = DateTime.UtcNow.AddMonths(-1);
-
         foreach (var dllName in HookDllNames)
         {
             var targetPath = Path.Combine(steamRoot, dllName);
             if (!File.Exists(targetPath))
                 missing.Add(dllName);
-            else
-            {
-                var lastWriteUtc = File.GetLastWriteTimeUtc(targetPath);
-                if (lastWriteUtc <= monthAgo)
-                {
-                    Console.WriteLine($"Hook DLL '{dllName}' is outdated (modified: {lastWriteUtc:yyyy-MM-dd HH:mm:ss} UTC, older than 1 month). Removing old file first...");
-                    try
-                    {
-                        File.Delete(targetPath);
-                        Console.WriteLine($"Removed old file '{dllName}' at {targetPath}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to remove old file '{dllName}': {ex.Message}");
-                    }
-                    missing.Add(dllName);
-                }
-            }
         }
         return missing;
     }
 
     public async Task EnsureHookDllsDeployedAsync(HttpClient httpClient, CancellationToken ct = default)
     {
-        var steamRoot = _pathsResolver.ResolveSteamInstall();
-        if (string.IsNullOrEmpty(steamRoot) || !Directory.Exists(steamRoot))
-        {
-            Console.WriteLine("Steam installation folder not found. Skipping setup hook DLL deployment.");
-            return;
-        }
-
-        // 1. Pre-check missing or outdated DLLs before making network request
-        var missingDlls = GetMissingDlls(steamRoot);
+        // 1. Pre-check missing DLLs before making network request
+        var missingDlls = GetMissingDlls(_steamRoot);
         if (missingDlls.Count == 0)
         {
-            Console.WriteLine("All hook DLLs are already installed and up to date!.");
+            Console.WriteLine("All hook DLLs are already installed!.");
             return;
         }
 
-        Console.WriteLine($"Hook DLLs needing deployment/update: {string.Join(", ", missingDlls)}. Requesting setup package...");
+        Console.WriteLine($"Missing hook DLLs: {string.Join(", ", missingDlls)}. Requesting setup package...");
 
         // 2. Call /third-party/setup endpoint
         var url = $"{Constants.BaseApiUrl}{Constants.Endpoints.ThirdPartySetup}";
@@ -98,21 +88,21 @@ public sealed class HookDllDeployer
             Directory.CreateDirectory(extractRoot);
             ZipFile.ExtractToDirectory(zipPath, extractRoot, overwriteFiles: true);
 
-            var extractedDlls = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
-            foreach (var filePath in Directory.EnumerateFiles(extractRoot, "*.dll", SearchOption.AllDirectories))
+            var extractedFiles = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+            foreach (var filePath in Directory.EnumerateFiles(extractRoot, "*.*", SearchOption.AllDirectories))
             {
                 var fileName = Path.GetFileName(filePath);
                 if (HookDllNames.Contains(fileName, StringComparer.OrdinalIgnoreCase))
                 {
                     var bytes = await File.ReadAllBytesAsync(filePath, ct).ConfigureAwait(false);
-                    extractedDlls[fileName] = bytes;
+                    extractedFiles[fileName] = bytes;
                 }
             }
 
-            // 4. Deploy missing DLLs
-            await DeployHookDllsAsync(steamRoot, missingDlls, extractedDlls, ct).ConfigureAwait(false);
+            // 4. Deploy missing files (DLLs & opensteamtool.toml)
+            await DeployHookDllsAsync(_steamRoot, missingDlls, extractedFiles, ct).ConfigureAwait(false);
         }
-        catch (Exception ex) { Console.WriteLine($"Error deploying setup hook DLLs: {ex.Message}"); }
+        catch (Exception ex) { Console.WriteLine($"Error deploying setup hook files: {ex.Message}"); }
         finally { DeleteDirectoryQuietly(workRoot); }
     }
 
@@ -127,24 +117,12 @@ public sealed class HookDllDeployer
                 var targetPath = Path.Combine(steamRoot, dllName);
                 try
                 {
-                    if (File.Exists(targetPath))
-                    {
-                        File.Delete(targetPath);
-                        Console.WriteLine($"Removed old file {dllName} at {targetPath}");
-                    }
-
                     await WriteAllBytesAtomicallyAsync(targetPath, bytes, ct).ConfigureAwait(false);
                     Console.WriteLine($"Deployed {dllName} to {targetPath}");
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to deploy {dllName}: {ex.Message}");
-                }
+                catch (Exception ex) { Console.WriteLine($"Failed to deploy {dllName}: {ex.Message}"); }
             }
-            else
-            {
-                Console.WriteLine($"Hook DLL {dllName} was not found in setup.zip");
-            }
+            else { Console.WriteLine($"Hook file {dllName} was not found in setup.zip"); }
         }
     }
 

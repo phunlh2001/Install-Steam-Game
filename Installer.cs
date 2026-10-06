@@ -9,7 +9,6 @@ namespace InstallApp;
 public sealed class Installer
 {
     private readonly string _stPlugin;
-    private readonly string _luaPlugin;
     private readonly string _depot;
     private readonly string _rootDepot;
     private readonly SteamLibrary _steamLibrary;
@@ -18,7 +17,6 @@ public sealed class Installer
     {
         var pathResolver = new SteamPathsResolver();
         _stPlugin = pathResolver.ResolveStPluginFolder() ?? pathResolver.DefaultStPlugin();
-        _luaPlugin = pathResolver.ResolveLuaFolder() ?? pathResolver.DefaultLuaFolder();
         _depot = pathResolver.ResolveDepotCacheFolder() ?? pathResolver.DefaultDepotCache();
         _rootDepot = pathResolver.ResolveRootDepotCacheFolder() ?? pathResolver.DefaultRootDepotCache();
         _steamLibrary = new SteamLibrary();
@@ -114,12 +112,6 @@ public sealed class Installer
 
                     var dest1 = Path.Combine(_stPlugin, fileName);
                     File.Copy(filePath, dest1, overwrite: true);
-
-                    if (!Directory.Exists(_luaPlugin))
-                        Directory.CreateDirectory(_luaPlugin);
-
-                    var dest2 = Path.Combine(_luaPlugin, fileName);
-                    File.Copy(filePath, dest2, overwrite: true);
                 }
                 else if (string.Equals(ext, ".manifest", StringComparison.OrdinalIgnoreCase))
                 {
